@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Camera } from 'lucide-react';
-// PERBAIKAN DI SINI: Ubah 'motion/react' menjadi 'framer-motion'
-import { motion } from 'framer-motion'; 
+import { motion } from 'motion/react';
 
 export default function Scanner() {
   const navigate = useNavigate();
@@ -22,6 +21,7 @@ export default function Scanner() {
 
     scanner.render(
       (decodedText) => {
+        // Expected format: https://.../item/123
         try {
           const url = new URL(decodedText);
           const pathParts = url.pathname.split('/');
@@ -31,19 +31,19 @@ export default function Scanner() {
             scanner.clear();
             navigate(`/item/${itemId}`);
           } else {
-            setError("Format QR Code tidak valid untuk sistem ini.");
+            setError("Invalid QR code format for this system.");
           }
         } catch (e) {
-          setError("Teks yang dipindai bukan URL yang valid.");
+          setError("Scanned text is not a valid URL.");
         }
       },
       (errorMessage) => {
-        // Abaikan error frame (normal terjadi saat mencari QR)
+        // Silently ignore scan errors (they happen every frame)
       }
     );
 
     return () => {
-      scanner.clear().catch(error => console.error("Gagal membersihkan scanner", error));
+      scanner.clear().catch(error => console.error("Failed to clear scanner", error));
     };
   }, [navigate]);
 
@@ -65,7 +65,7 @@ export default function Scanner() {
           <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
             <img 
               src="https://pemda.lamandaukab.go.id/wp-content/uploads/2020/02/LOGO-KABUPATEN-LAMANDAU.png" 
-              alt="Logo Lamandau" 
+              alt="Lamandau Logo" 
               className="w-6 h-auto"
               referrerPolicy="no-referrer"
             />

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-// PERBAIKAN: Gunakan framer-motion agar build sukses
-import { motion } from 'framer-motion'; 
+import { motion } from 'motion/react';
 import { Lock, User, LogIn, AlertCircle } from 'lucide-react';
 
 export default function Login() {
@@ -17,29 +16,26 @@ export default function Login() {
     setError('');
 
     try {
-      // Menggunakan relative path agar fleksibel saat di deploy ke Vercel
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await res.json();
-
       if (res.ok) {
-        localStorage.setItem('user', JSON.stringify(data));
-        // Arahkan berdasarkan role dari backend
-        if (data.role === 'admin') {
+        const user = await res.json();
+        localStorage.setItem('user', JSON.stringify(user));
+        if (user.role === 'admin') {
           navigate('/admin');
         } else {
           navigate('/user');
         }
       } else {
+        const data = await res.json();
         setError(data.error || 'Login gagal');
       }
     } catch (err) {
-      console.error("Login connection error:", err);
-      setError('Terjadi kesalahan koneksi ke server');
+      setError('Terjadi kesalahan koneksi');
     } finally {
       setLoading(false);
     }
@@ -138,6 +134,14 @@ export default function Login() {
                   <span className="text-zinc-400 font-mono">user / user123</span>
                 </div>
               </div>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-[0.2em]">
+                Sekretariat Daerah
+              </p>
+              <p className="text-[10px] text-zinc-300 font-medium uppercase tracking-[0.1em]">
+                Kabupaten Lamandau
+              </p>
             </div>
           </div>
         </div>
