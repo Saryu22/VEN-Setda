@@ -24,6 +24,33 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // --- API ROUTES ---
 
+// [NEW] Route Login
+// Menangani request dari Login.tsx
+app.post("/api/login", (req, res) => {
+  const { username, password } = req.body;
+
+  console.log(`Log: Mencoba login - User: ${username}`);
+
+  // Logika autentikasi sederhana sesuai akun percobaan
+  if (username === "admin" && password === "admin123") {
+    res.json({ 
+      id: 1, 
+      username: "admin", 
+      role: "admin", 
+      name: "Administrator Setda" 
+    });
+  } else if (username === "user" && password === "user123") {
+    res.json({ 
+      id: 2, 
+      username: "user", 
+      role: "user", 
+      name: "Staff Setda" 
+    });
+  } else {
+    res.status(401).json({ error: "Username atau password salah!" });
+  }
+});
+
 // Health Check
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", server: "Vercel Serverless" });
@@ -107,8 +134,17 @@ app.put("/api/items/:id", async (req, res) => {
   }
 });
 
-// --- PENGATURAN VERCEL (PENTING) ---
-// Jangan gunakan app.listen() atau app.get("*") untuk static files di sini.
-// Biarkan vercel.json yang mengatur routing ke index.html.
-
 export default app;
+
+// --- TAMBAHAN UNTUK JALAN DI LOKAL ---
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`
+🚀 Server Backend Standby!
+📡 Port: ${PORT}
+🔗 URL: http://localhost:${PORT}
+📂 API Login: http://localhost:${PORT}/api/login
+    `);
+  });
+}
