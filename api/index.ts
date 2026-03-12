@@ -13,9 +13,12 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
   max: 10,
   idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
 });
 
 const app = express();
+
+// Middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -35,6 +38,7 @@ app.post("/api/login", async (req, res) => {
       res.status(401).json({ error: "Username atau password salah" });
     }
   } catch (err: any) {
+    console.error("Login Error:", err.message);
     res.status(500).json({ error: "Database error", details: err.message });
   }
 });
@@ -44,7 +48,8 @@ app.get("/api/items", async (req, res) => {
   try {
     const result = await query("SELECT * FROM items ORDER BY created_at DESC");
     res.json(result.rows);
-  } catch (err) {
+  } catch (err: any) {
+    console.error("Fetch Items Error:", err.message);
     res.status(500).json({ error: "Gagal mengambil data items" });
   }
 });
@@ -56,7 +61,8 @@ app.post("/api/items", async (req, res) => {
   try {
     const result = await query(sql, [name, nibar, register_code, item_code, specifications, brand_type, procurement_year, user_name, user_status, user_position, location, condition, photo_url, notes]);
     res.status(201).json(result.rows[0]);
-  } catch (err) {
+  } catch (err: any) {
+    console.error("Insert Item Error:", err.message);
     res.status(500).json({ error: "Gagal menyimpan item" });
   }
 });
@@ -65,7 +71,8 @@ app.delete("/api/items/:id", async (req, res) => {
   try {
     await query("DELETE FROM items WHERE id = $1", [req.params.id]);
     res.status(204).send();
-  } catch (err) {
+  } catch (err: any) {
+    console.error("Delete Error:", err.message);
     res.status(500).json({ error: "Gagal menghapus item" });
   }
 });
@@ -75,7 +82,8 @@ app.get("/api/reports", async (req, res) => {
   try {
     const result = await query("SELECT * FROM reports ORDER BY created_at DESC");
     res.json(result.rows);
-  } catch (err) {
+  } catch (err: any) {
+    console.error("Fetch Reports Error:", err.message);
     res.status(500).json({ error: "Gagal mengambil data laporan" });
   }
 });
@@ -88,18 +96,29 @@ app.post("/api/reports", async (req, res) => {
       [item_name, user_name, location, report_date, description]
     );
     res.status(201).json(result.rows[0]);
-  } catch (err) {
+  } catch (err: any) {
+    console.error("Insert Report Error:", err.message);
     res.status(500).json({ error: "Gagal membuat laporan" });
   }
 });
 
 // --- 4. STATIC FILES & SPA ROUTING ---
 const distPath = path.resolve(__dirname, "..", "dist");
+
+// Sajikan file statis dari folder dist
 app.use(express.static(distPath));
 
+// Penanganan rute SPA: Kirim index.html untuk rute non-API yang tidak ditemukan
 app.get("*", (req, res) => {
   if (!req.path.startsWith('/api')) {
-    res.sendFile(path.join(distPath, "index.html"));
+    res.sendFile(path.join(distPath, "index.html"), (err) => {
+      if (err) {
+        res.status(404).send("File index.html tidak ditemukan. Pastikan sudah menjalankan 'npm run build'.");
+      }
+    });
+  } else {
+    // Jika rute /api/ tidak ditemukan di atas
+    res.status(404).json({ error: "API Endpoint not found" });
   }
 });
 
