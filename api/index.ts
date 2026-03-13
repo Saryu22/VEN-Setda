@@ -26,90 +26,92 @@ app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
   try {
     const result = await query("SELECT id, username, role FROM users WHERE username = $1 AND password = $2", [username, password]);
-    result.rows.length > 0 ? res.json(result.rows[0]) : res.status(401).json({ error: "Salah login" });
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      res.status(401).json({ error: "Username atau password salah" });
+    }
   } catch (err: any) {
-    res.status(500).json({ error: "DB Error" });
+    res.status(500).json({ error: "Database error", details: err.message });
   }
 });
 
-// --- 2. ITEMS ---
+// --- 2. ITEMS (INVENTARIS) ---
 app.get("/api/items", async (req, res) => {
   try {
     const result = await query("SELECT * FROM items ORDER BY created_at DESC");
     res.json(result.rows);
-  } catch (err) { res.status(500).json({ error: "Fetch failed" }); }
+  } catch (err: any) {
+    res.status(500).json({ error: "Gagal mengambil data items", details: err.message });
+  }
 });
 
-// GET Single Item (Penting untuk halaman Detail/Edit)
 app.get("/api/items/:id", async (req, res) => {
   try {
     const result = await query("SELECT * FROM items WHERE id = $1", [req.params.id]);
-    result.rows.length > 0 ? res.json(result.rows[0]) : res.status(404).json({ error: "Not found" });
-  } catch (err) { res.status(500).json({ error: "Error" }); }
+    result.rows.length > 0 ? res.json(result.rows[0]) : res.status(404).json({ error: "Item tidak ditemukan" });
+  } catch (err: any) {
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
 });
 
 app.post("/api/items", async (req, res) => {
-  const { name, nibar, register_code, item_code, specifications, brand_type, procurement_year, user_name, user_status, user_position, location, condition, photo_url, notes } = req.body;
-  const sql = `INSERT INTO items (name, nibar, register_code, item_code, specifications, brand_type, procurement_year, user_name, user_status, user_position, location, condition, photo_url, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`;
+  const b = req.body;
+  const sql = `INSERT INTO items (name, nibar, register_code, item_code, specifications, brand_type, procurement_year, user_name, user_status, user_position, location, condition, photo_url, notes) 
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`;
+  
+  const values = [
+    b.name, b.nibar, b.register_code || b.registerCode, b.item_code || b.itemCode, 
+    b.specifications, b.brand_type || b.brandType, b.procurement_year || b.procurementYear, 
+    b.user_name || b.userName, b.user_status || b.userStatus, b.user_position || b.userPosition, 
+    b.location, b.condition, b.photo_url || b.photoUrl, b.notes
+  ];
+
   try {
-    const result = await query(sql, [name, nibar, register_code, item_code, specifications, brand_type, procurement_year, user_name, user_status, user_position, location, condition, photo_url, notes]);
+    const result = await query(sql, values);
     res.status(201).json(result.rows[0]);
-  } catch (err) { res.status(500).json({ error: "Save failed" }); }
+  } catch (err: any) {
+    res.status(500).json({ error: "Gagal menyimpan item", details: err.message });
+  }
 });
 
-app.put("/api/items/:id", async (req, res) => {
-  const { id } = req.params;
-  const { name, nibar, register_code, item_code, specifications, brand_type, procurement_year, user_name, user_status, user_position, location, condition, photo_url, notes } = req.body;
-  const sql = `UPDATE items SET name=$1, nibar=$2, register_code=$3, item_code=$4, specifications=$5, brand_type=$6, procurement_year=$7, user_name=$8, user_status=$9, user_position=$10, location=$11, condition=$12, photo_url=$13, notes=$14 WHERE id=$15 RETURNING *`;
-  try {
-    const result = await query(sql, [name, nibar, register_code, item_code, specifications, brand_type, procurement_year, user_name, user_status, user_position, location, condition, photo_url, notes, id]);
-    res.json(result.rows[0] || { error: "Not found" });
-  } catch (err) { res.status(500).json({ error: "Update failed" }); }
-});
-
-app.delete("/api/items/:id", async (req, res) => {
-  try { await query("DELETE FROM items WHERE id = $1", [req.params.id]); res.status(204).send(); }
-  catch (err) { res.status(500).json({ error: "Delete failed" }); }
-});
-
-// --- 3. REPORTS ---
-app.get("/api/reports", async (req, res) => {
-  try {
-    const result = await query("SELECT * FROM reports ORDER BY created_at DESC");
-    res.json(result.rows);
-  } catch (err) { res.status(500).json({ error: "Fetch failed" }); }
-});
-
+// --- 3. REPORTS (LAPORAN KERUSAKAN) ---
 app.post("/api/reports", async (req, res) => {
-  const { item_name, user_name, location, report_date, description } = req.body;
+  const { item_name, itemName, user_name, userName, location, report_date, reportDate, description } = req.body;
   try {
-    const result = await query("INSERT INTO reports (item_name, user_name, location, report_date, description) VALUES ($1, $2, $3, $4, $5) RETURNING *", [item_name, user_name, location, report_date, description]);
+    const result = await query(
+      "INSERT INTO reports (item_name, user_name, location, report_date, description) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [item_name || itemName, user_name || userName, location, report_date || reportDate, description]
+    );
     res.status(201).json(result.rows[0]);
-  } catch (err) { res.status(500).json({ error: "Report failed" }); }
+  } catch (err: any) {
+    res.status(500).json({ error: "Gagal mengirim laporan", details: err.message });
+  }
 });
 
-// Update Status Report (Penting untuk Admin)
-app.put("/api/reports/:id/status", async (req, res) => {
+// --- 4. REQUESTS (PERMINTAAN BARANG) ---
+app.post("/api/requests", async (req, res) => {
+  // Menangani item_name vs itemName dan requester_name vs requesterName
+  const { item_name, itemName, quantity, urgency, notes, requester_name, requesterName } = req.body;
   try {
-    const result = await query("UPDATE reports SET status = $1 WHERE id = $2 RETURNING *", [req.body.status, req.params.id]);
-    res.json(result.rows[0]);
-  } catch (err) { res.status(500).json({ error: "Status update failed" }); }
+    const result = await query(
+      "INSERT INTO requests (item_name, quantity, urgency, notes, requester_name) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [item_name || itemName, quantity, urgency, notes, requester_name || requesterName]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err: any) {
+    console.error("Request POST Error:", err.message);
+    res.status(500).json({ error: "Gagal menyimpan permintaan", details: err.message });
+  }
 });
 
-// --- 4. REQUESTS ---
 app.get("/api/requests", async (req, res) => {
   try {
     const result = await query("SELECT * FROM requests ORDER BY created_at DESC");
     res.json(result.rows);
-  } catch (err) { res.status(500).json({ error: "Fetch failed" }); }
-});
-
-app.post("/api/requests", async (req, res) => {
-  const { item_name, quantity, urgency, notes, requester_name } = req.body;
-  try {
-    const result = await query("INSERT INTO requests (item_name, quantity, urgency, notes, requester_name) VALUES ($1, $2, $3, $4, $5) RETURNING *", [item_name, quantity, urgency, notes, requester_name]);
-    res.status(201).json(result.rows[0]);
-  } catch (err) { res.status(500).json({ error: "Request failed" }); }
+  } catch (err: any) {
+    res.status(500).json({ error: "Gagal mengambil data permintaan", details: err.message });
+  }
 });
 
 // --- SPA ROUTING ---
@@ -117,7 +119,7 @@ const distPath = path.resolve(__dirname, "..", "dist");
 app.use(express.static(distPath));
 
 app.get("*", (req, res) => {
-  if (req.path.startsWith('/api')) return res.status(404).json({ error: "API not found" });
+  if (req.path.startsWith('/api')) return res.status(404).json({ error: "API Endpoint not found" });
   res.sendFile(path.join(distPath, "index.html"));
 });
 
