@@ -36,22 +36,13 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// --- 2. ITEMS (INVENTARIS) ---
+// --- 2. ITEMS ---
 app.get("/api/items", async (req, res) => {
   try {
     const result = await query("SELECT * FROM items ORDER BY created_at DESC");
     res.json(result.rows);
   } catch (err: any) {
-    res.status(500).json({ error: "Gagal mengambil data items", details: err.message });
-  }
-});
-
-app.get("/api/items/:id", async (req, res) => {
-  try {
-    const result = await query("SELECT * FROM items WHERE id = $1", [req.params.id]);
-    result.rows.length > 0 ? res.json(result.rows[0]) : res.status(404).json({ error: "Item tidak ditemukan" });
-  } catch (err: any) {
-    res.status(500).json({ error: "Server error", details: err.message });
+    res.status(500).json({ error: "Fetch failed", details: err.message });
   }
 });
 
@@ -59,23 +50,21 @@ app.post("/api/items", async (req, res) => {
   const b = req.body;
   const sql = `INSERT INTO items (name, nibar, register_code, item_code, specifications, brand_type, procurement_year, user_name, user_status, user_position, location, condition, photo_url, notes) 
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`;
-  
   const values = [
     b.name, b.nibar, b.register_code || b.registerCode, b.item_code || b.itemCode, 
     b.specifications, b.brand_type || b.brandType, b.procurement_year || b.procurementYear, 
     b.user_name || b.userName, b.user_status || b.userStatus, b.user_position || b.userPosition, 
     b.location, b.condition, b.photo_url || b.photoUrl, b.notes
   ];
-
   try {
     const result = await query(sql, values);
     res.status(201).json(result.rows[0]);
   } catch (err: any) {
-    res.status(500).json({ error: "Gagal menyimpan item", details: err.message });
+    res.status(500).json({ error: "Save failed", details: err.message });
   }
 });
 
-// --- 3. REPORTS (LAPORAN KERUSAKAN) ---
+// --- 3. REPORTS ---
 app.post("/api/reports", async (req, res) => {
   const { item_name, itemName, user_name, userName, location, report_date, reportDate, description } = req.body;
   try {
@@ -85,13 +74,21 @@ app.post("/api/reports", async (req, res) => {
     );
     res.status(201).json(result.rows[0]);
   } catch (err: any) {
-    res.status(500).json({ error: "Gagal mengirim laporan", details: err.message });
+    res.status(500).json({ error: "Report failed", details: err.message });
   }
 });
 
-// --- 4. REQUESTS (PERMINTAAN BARANG) ---
+// --- 4. REQUESTS (PENTING: Perhatikan endpoint ini) ---
+app.get("/api/requests", async (req, res) => {
+  try {
+    const result = await query("SELECT * FROM requests ORDER BY created_at DESC");
+    res.json(result.rows);
+  } catch (err: any) {
+    res.status(500).json({ error: "Fetch requests failed", details: err.message });
+  }
+});
+
 app.post("/api/requests", async (req, res) => {
-  // Menangani item_name vs itemName dan requester_name vs requesterName
   const { item_name, itemName, quantity, urgency, notes, requester_name, requesterName } = req.body;
   try {
     const result = await query(
@@ -100,27 +97,27 @@ app.post("/api/requests", async (req, res) => {
     );
     res.status(201).json(result.rows[0]);
   } catch (err: any) {
-    console.error("Request POST Error:", err.message);
-    res.status(500).json({ error: "Gagal menyimpan permintaan", details: err.message });
+    res.status(500).json({ error: "Insert request failed", details: err.message });
   }
 });
 
-app.get("/api/requests", async (req, res) => {
-  try {
-    const result = await query("SELECT * FROM requests ORDER BY created_at DESC");
-    res.json(result.rows);
-  } catch (err: any) {
-    res.status(500).json({ error: "Gagal mengambil data permintaan", details: err.message });
-  }
-});
-
-// --- SPA ROUTING ---
-const distPath = path.resolve(__dirname, "..", "dist");
+// --- HANDLING STATIC FILES & SPA ---
+// Di Vercel, folder 'dist' biasanya berada sejajar dengan folder 'api'
+const distPath = path.join(process.cwd(), "dist");
 app.use(express.static(distPath));
 
+// Middleware khusus untuk menangkap rute API yang salah ketik agar tidak dilempar ke index.html
+app.use("/api/*", (req, res) => {
+  res.status(404).json({ error: `API route ${req.originalUrl} not found` });
+});
+
+// Mengarahkan sisa rute ke index.html (untuk SPA React/Vite)
 app.get("*", (req, res) => {
-  if (req.path.startsWith('/api')) return res.status(404).json({ error: "API Endpoint not found" });
-  res.sendFile(path.join(distPath, "index.html"));
+  res.sendFile(path.join(distPath, "index.html"), (err) => {
+    if (err) {
+      res.status(500).send("index.html not found. Make sure you have built your frontend.");
+    }
+  });
 });
 
 export default app;
