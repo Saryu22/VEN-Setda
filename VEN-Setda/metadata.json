@@ -1,0 +1,5 @@
+{
+  "name": "VEN Setda",
+  "description": "Sistem manajemen inventaris profesional untuk barang elektronik dengan pelacakan kode QR terintegrasi dan pemantauan status.",
+  "requestFramePermissions": ["camera"]
+}
