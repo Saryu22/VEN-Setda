@@ -1,14 +1,14 @@
 {
-  "name": "react-example",
+  "name": "ven-setda",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx api/index.ts",
+    "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node api/index.js",
-    "clean": "rm -rf dist",
+    "server": "tsx api/index.ts",
+    "start": "tsx api/index.ts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
